@@ -1828,7 +1828,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addLookupRelation() {
-        showPromptModal("Ingrese un nombre para la nueva búsqueda (ej: Obras Sociales):", (name) => {
+        showPromptModal("Ingrese un nombre para la nueva búsqueda (ej: EMPRESA):", (name) => {
             const id = `rel_${Date.now()}`;
             const sourceDB = `_lookup_${name.replace(/[^a-z0-9]/gi, '').toLowerCase()}_${Date.now()}`;
             if (appData.referenceDB[sourceDB]) return showToast('Error: ya existe una base de datos con un nombre similar.', 'error');
