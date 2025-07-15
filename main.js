@@ -2012,7 +2012,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dataStr = JSON.stringify(appData, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `gtn_v9_backup_completo_${getFormattedTimestampForFilename()}.json`;
+            const a = document.createElement('a'); a.href = url; a.download = `gtn_v10_backup_completo_${getFormattedTimestampForFilename()}.json`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
             showToast('Copia de seguridad completa exportada.', 'success');
             elements.loadingOverlay.classList.remove('active');
