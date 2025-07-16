@@ -389,18 +389,34 @@ document.addEventListener('DOMContentLoaded', () => {
         let needsRerender = false;
         
         (appData.lookupRelations || []).forEach(relation => {
-            if (relation.enabled && relation.keyColumn === column && relation.sourceDB) {
-                const sourceData = appData.referenceDB[relation.sourceDB]?.[finalValue];
-                if (sourceData) {
-                    Object.entries(relation.targetMap || {}).forEach(([sourceField, targetColumn]) => {
-                        if (targetColumn && row.hasOwnProperty(targetColumn)) {
-                            row[targetColumn] = sourceData[sourceField] || '';
-                            needsRerender = true;
-                        }
-                    });
+    if (relation.enabled && relation.keyColumn === column && relation.sourceDB) {
+        const sourceData = appData.referenceDB[relation.sourceDB]?.[finalValue];
+        if (sourceData) {
+            Object.entries(relation.targetMap || {}).forEach(([sourceField, targetColumn]) => {
+                if (targetColumn && row.hasOwnProperty(targetColumn)) {
+                    
+                    // --- INICIO DE LA MODIFICACIÓN ---
+                    let valueToPopulate = sourceData[sourceField] || '';
+                    const targetFormat = appData.columnFormats[targetColumn];
+
+                    // Aplicar formato si la columna de destino lo requiere
+                    if (targetFormat === 'cuit') {
+                        valueToPopulate = formatCuitCuil(valueToPopulate);
+                    } else if (targetFormat === 'date') {
+                        const parsedDate = parseDate(valueToPopulate);
+                        valueToPopulate = parsedDate ? formatDate(parsedDate) : '';
+                    }
+                    // Puedes añadir más 'else if' para otros formatos si es necesario
+
+                    row[targetColumn] = valueToPopulate;
+                    // --- FIN DE LA MODIFICACIÓN ---
+
+                    needsRerender = true;
                 }
-            }
-        });
+            });
+        }
+    }
+});
         
         if (dateCalcCol && daysDisplayCol && column === dateCalcCol) {
             row[daysDisplayCol] = calculateDays(finalValue);
