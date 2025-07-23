@@ -134,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (!Array.isArray(parsed.filters)) appData.filters = [];
                     
-                    // --- MODIFICADO: Lógica de migración para 'hiddenStatuses' ---
                     if (parsed.hiddenStatuses && !parsed.hideSettings) {
                         appData.hideSettings = {
                             column: parsed.colorCodingColumn || 'ESTADO', // Usa la columna de color como un default razonable
@@ -181,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!parsed.tableTextColor) appData.tableTextColor = 'inherit';
                     if (!parsed.rowsPerPage) appData.rowsPerPage = 10;
                     if (!parsed.colorCodingColumn) appData.colorCodingColumn = 'ESTADO';
-                    if (!parsed.bulkDeleteColumn) appData.bulkDeleteColumn = 'ESTADO'; // --- NUEVO ---
+                    if (!parsed.bulkDeleteColumn) appData.bulkDeleteColumn = 'ESTADO'; 
                     
                     if (!parsed.keyColumns) {
                         appData.keyColumns = {};
@@ -203,7 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
             templates: [],
             visualAlerts: [{ id: 1, enabled: true, color: { bg: '#fee2e2', text: '#991b1b'}, condition: '>=', value: '10' }],
             filters: [],
-            // --- MODIFICADO: 'hiddenStatuses' se reemplaza por 'hideSettings' ---
             hideSettings: {
                 column: 'ESTADO',
                 hiddenValues: []
@@ -240,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tableTextColor: 'inherit',
             rowsPerPage: 10,
             colorCodingColumn: 'ESTADO',
-            bulkDeleteColumn: 'ESTADO', // --- NUEVO ---
+            bulkDeleteColumn: 'ESTADO', 
         };
         if (appData.mainData.length === 0) addRow(false);
     }
@@ -269,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const generalQuery = elements.searchInput.value.toLowerCase().trim();
         let data = [...appData.mainData];
         
-        // --- MODIFICADO: La lógica de ocultar es ahora configurable ---
         const hideSettings = appData.hideSettings;
         if (hideSettings && hideSettings.column && hideSettings.hiddenValues && hideSettings.hiddenValues.length > 0 && !generalQuery) {
             data = data.filter(row => !hideSettings.hiddenValues.includes(row[hideSettings.column]));
@@ -389,34 +386,28 @@ document.addEventListener('DOMContentLoaded', () => {
         let needsRerender = false;
         
         (appData.lookupRelations || []).forEach(relation => {
-    if (relation.enabled && relation.keyColumn === column && relation.sourceDB) {
-        const sourceData = appData.referenceDB[relation.sourceDB]?.[finalValue];
-        if (sourceData) {
-            Object.entries(relation.targetMap || {}).forEach(([sourceField, targetColumn]) => {
-                if (targetColumn && row.hasOwnProperty(targetColumn)) {
-                    
-                    // --- INICIO DE LA MODIFICACIÓN ---
-                    let valueToPopulate = sourceData[sourceField] || '';
-                    const targetFormat = appData.columnFormats[targetColumn];
+            if (relation.enabled && relation.keyColumn === column && relation.sourceDB) {
+                const sourceData = appData.referenceDB[relation.sourceDB]?.[finalValue];
+                if (sourceData) {
+                    Object.entries(relation.targetMap || {}).forEach(([sourceField, targetColumn]) => {
+                        if (targetColumn && row.hasOwnProperty(targetColumn)) {
+                            let valueToPopulate = sourceData[sourceField] || '';
+                            const targetFormat = appData.columnFormats[targetColumn];
 
-                    // Aplicar formato si la columna de destino lo requiere
-                    if (targetFormat === 'cuit') {
-                        valueToPopulate = formatCuitCuil(valueToPopulate);
-                    } else if (targetFormat === 'date') {
-                        const parsedDate = parseDate(valueToPopulate);
-                        valueToPopulate = parsedDate ? formatDate(parsedDate) : '';
-                    }
-                    // Puedes añadir más 'else if' para otros formatos si es necesario
+                            if (targetFormat === 'cuit') {
+                                valueToPopulate = formatCuitCuil(valueToPopulate);
+                            } else if (targetFormat === 'date') {
+                                const parsedDate = parseDate(valueToPopulate);
+                                valueToPopulate = parsedDate ? formatDate(parsedDate) : '';
+                            }
 
-                    row[targetColumn] = valueToPopulate;
-                    // --- FIN DE LA MODIFICACIÓN ---
-
-                    needsRerender = true;
+                            row[targetColumn] = valueToPopulate;
+                            needsRerender = true;
+                        }
+                    });
                 }
-            });
-        }
-    }
-});
+            }
+        });
         
         if (dateCalcCol && daysDisplayCol && column === dateCalcCol) {
             row[daysDisplayCol] = calculateDays(finalValue);
@@ -431,25 +422,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addRow(showToastNotification = true) {
-    const newRow = { id: `row_${Date.now()}` };
-    appData.headers.forEach(header => newRow[header] = '');
-    
-    const sortColumn = appData.sortBy;
-    if (sortColumn && appData.columnFormats[sortColumn] === 'date') {
-        newRow[sortColumn] = formatDate(new Date());
-    }
+        const newRow = { id: `row_${Date.now()}` };
+        appData.headers.forEach(header => newRow[header] = '');
+        
+        const sortColumn = appData.sortBy;
+        if (sortColumn && appData.columnFormats[sortColumn] === 'date') {
+            newRow[sortColumn] = formatDate(new Date());
+        }
 
-    currentPage = 1; 
+        currentPage = 1; 
 
-    appData.mainData.unshift(newRow); 
-    
-    saveData();
-    sortAndApplyFilters(); 
-    
-    if (showToastNotification) {
-        showToast('Nueva fila añadida.', 'success');
+        appData.mainData.unshift(newRow); 
+        
+        saveData();
+        sortAndApplyFilters(); 
+        
+        if (showToastNotification) {
+            showToast('Nueva fila añadida.', 'success');
+        }
     }
- }
     function deleteRow() {
         if (!selectedRowId) return;
         showConfirmModal('¿Seguro que quieres eliminar la fila seleccionada?', () => {
@@ -888,7 +879,9 @@ document.addEventListener('DOMContentLoaded', () => {
         select.appendChild(noneOption);
 
         if (hasTemplates) {
-            appData.templates.forEach(template => {
+            // --- MODIFICADO: Ordenar plantillas alfabéticamente ---
+            const sortedTemplates = [...appData.templates].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+            sortedTemplates.forEach(template => {
                 select.innerHTML += `<option value="${template.id}">${template.name}</option>`;
             });
         }
@@ -991,7 +984,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!name) return showToast('El nombre de la plantilla es obligatorio.', 'warning');
         const content = templateContentInput.value;
         const fontFamily = templateFontInput.value;
-        const manualFields = Array.from(placeholdersContainer.querySelectorAll('.bg-purple-100')).map(btn => btn.dataset.placeholder);
+        // --- MODIFICADO: Leer campos manuales desde la nueva estructura de contenedores ---
+        const manualFields = Array.from(placeholdersContainer.querySelectorAll('.manual-field-container')).map(container => container.dataset.placeholder);
 
         if (id) {
             const index = appData.templates.findIndex(t => t.id === id);
@@ -1028,18 +1022,65 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.onclick = () => insertPlaceholderForTemplate(h);
             placeholdersContainer.appendChild(btn);
         });
-        (manualFields || []).forEach(field => {
-            const btn = document.createElement('button');
-            btn.className = "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-2 hover:bg-purple-200 dark:hover:bg-purple-700";
-            btn.textContent = field; btn.dataset.placeholder = field;
-            const removeSpan = document.createElement('span');
-            removeSpan.className = 'delete-manual-field font-bold text-red-500 cursor-pointer text-lg leading-none';
-            removeSpan.innerHTML = '&times;';
-            removeSpan.onclick = (e) => { e.stopPropagation(); btn.remove(); };
-            btn.appendChild(removeSpan);
-            btn.onclick = () => insertPlaceholderForTemplate(field);
-            placeholdersContainer.appendChild(btn);
+        
+        // --- MODIFICADO: Renderizar campos manuales con controles de ordenación ---
+        (manualFields || []).forEach((field, index) => {
+            const container = document.createElement('div');
+            container.className = "manual-field-container bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200 dark:hover:bg-purple-700";
+            container.dataset.placeholder = field;
+    
+            const upBtn = document.createElement('button');
+            upBtn.innerHTML = '&#9650;'; // Up arrow
+            upBtn.title = "Mover arriba";
+            upBtn.className = "p-1 rounded-full hover:bg-purple-300 dark:hover:bg-purple-600 disabled:opacity-50";
+            upBtn.disabled = index === 0;
+            upBtn.onclick = (e) => { e.stopPropagation(); moveManualField(field, -1); };
+    
+            const downBtn = document.createElement('button');
+            downBtn.innerHTML = '&#9660;'; // Down arrow
+            downBtn.title = "Mover abajo";
+            downBtn.className = "p-1 rounded-full hover:bg-purple-300 dark:hover:bg-purple-600 disabled:opacity-50";
+            downBtn.disabled = index === manualFields.length - 1;
+            downBtn.onclick = (e) => { e.stopPropagation(); moveManualField(field, +1); };
+    
+            const textSpan = document.createElement('span');
+            textSpan.textContent = field;
+            textSpan.className = "px-1 cursor-pointer flex-grow text-center";
+            textSpan.onclick = () => insertPlaceholderForTemplate(field);
+    
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = "Eliminar campo";
+            removeBtn.className = "delete-manual-field font-bold text-red-500 cursor-pointer text-lg leading-none hover:text-red-700";
+            removeBtn.onclick = (e) => {
+                e.stopPropagation();
+                const currentFields = (manualFields || []).filter(f => f !== field);
+                updatePlaceholders(currentFields);
+            };
+            
+            container.appendChild(upBtn);
+            container.appendChild(downBtn);
+            container.appendChild(textSpan);
+            container.appendChild(removeBtn);
+            placeholdersContainer.appendChild(container);
         });
+    }
+
+    // --- NUEVO: Función para reordenar los campos manuales ---
+    function moveManualField(fieldName, direction) {
+        const placeholdersContainer = document.getElementById('placeholders-container');
+        // Leer el orden actual de los campos desde el DOM
+        const fields = Array.from(placeholdersContainer.querySelectorAll('.manual-field-container')).map(c => c.dataset.placeholder);
+        const index = fields.indexOf(fieldName);
+        const newIndex = index + direction;
+
+        if (newIndex < 0 || newIndex >= fields.length) return; // Si ya está al principio o al final
+
+        // Intercambiar elementos en el array
+        [fields[index], fields[newIndex]] = [fields[newIndex], fields[index]];
+        
+        // Volver a renderizar los placeholders con el nuevo orden
+        updatePlaceholders(fields);
     }
     
     function insertPlaceholderForTemplate(text) {
@@ -1084,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (manualVars.length > 0) {
             const manualVarsForm = document.getElementById('manual-vars-form');
             manualVarsForm.innerHTML = '';
+            // La iteración respeta el orden del array `manualFields`, que ahora es reordenable
             manualVars.forEach(varName => {
                 const label = document.createElement('label');
                 label.className = "block";
@@ -1928,12 +1970,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         } else {
-            // --- FIX STARTS HERE ---
-            // Handle updates for regular, non-key data fields
             if (appData.referenceDB[dbKey]?.[entryKey] && typeof field !== 'undefined') {
                 appData.referenceDB[dbKey][entryKey][field] = value;
             }
-            // --- FIX ENDS HERE ---
         }
     
         saveData();
@@ -2094,7 +2133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const checkedBoxes = document.querySelectorAll('.status-delete-checkbox:checked');
         if (checkedBoxes.length === 0) return;
         
-        // --- MODIFICADO: Usa la columna configurable para la eliminación ---
         const deleteCol = appData.bulkDeleteColumn;
         if (!deleteCol) {
             showToast('No se ha seleccionado una columna para la eliminación rápida.', 'error');
@@ -2207,9 +2245,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fieldName = manualFieldInput.value.trim();
                 if(!fieldName) return;
                 const placeholdersContainer = document.getElementById('placeholders-container');
-                const existing = appData.headers.concat(Array.from(placeholdersContainer.querySelectorAll('button')).map(b => b.dataset.placeholder));
+                // --- MODIFICADO: Leer campos manuales y de la tabla para evitar duplicados ---
+                const existingFieldsFromManual = Array.from(placeholdersContainer.querySelectorAll('.manual-field-container')).map(c => c.dataset.placeholder);
+                const existing = appData.headers.concat(existingFieldsFromManual);
                 if (existing.includes(fieldName)) return showToast('El campo ya existe.', 'warning');
-                updatePlaceholders([...Array.from(placeholdersContainer.querySelectorAll('.bg-purple-100')).map(b => b.dataset.placeholder), fieldName]);
+                
+                updatePlaceholders([...existingFieldsFromManual, fieldName]);
                 manualFieldInput.value = '';
             }
             if(e.target.id === 'format-bold-btn') applyTextFormat('bold');
