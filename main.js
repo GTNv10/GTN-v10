@@ -1151,11 +1151,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const finalContent = content.replace(/\{\{(.*?)\}\}/g, (_, key) => {
-            key = key.trim();
-            if (manualValues.hasOwnProperty(key)) return manualValues[key];
-            if (rowData.hasOwnProperty(key)) return rowData[key] ?? '';
-            return `{{${key}}}`;
-        });
+    key = key.trim();
+    if (manualValues.hasOwnProperty(key)) return manualValues[key];
+    
+    // --- INICIO DEL CAMBIO ---
+    if (rowData.hasOwnProperty(key)) {
+        const value = String(rowData[key] ?? '');
+        // Si el valor, sin espacios, no está vacío, lo usamos. Si no, usamos un string vacío.
+        return value.trim() ? value : '';
+    }
+    // --- FIN DEL CAMBIO ---
+
+    return `{{${key}}}`; // <-- ESTA LÍNEA DEBE QUEDAR
+});
 
         elements.manualVarsModal.classList.remove('active');
         pendingPDFGeneration.finalContent = finalContent;
@@ -1186,13 +1194,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
        
         filename = filename.replace(/\{\{(.*?)\}\}/g, (_, key) => {
-            key = key.trim();
-            if (manualValues.hasOwnProperty(key)) return manualValues[key];
-            if (rowData.hasOwnProperty(key)) return rowData[key] ?? '';
-            if (key.toLowerCase() === 'fecha_actual') return getFormattedDateForFilename();
-            if (key.toLowerCase() === 'nombre_plantilla') return template.name;
-            return '';
-        });
+    key = key.trim();
+    if (manualValues.hasOwnProperty(key)) return manualValues[key];
+    
+    // --- INICIO DEL CAMBIO ---
+    if (rowData.hasOwnProperty(key)) {
+        const value = String(rowData[key] ?? '');
+        // Si el valor, sin espacios, no está vacío, lo usamos. Si no, usamos un string vacío.
+        return value.trim() ? value : '';
+    }
+    // --- FIN DEL CAMBIO ---
+
+    if (key.toLowerCase() === 'fecha_actual') return getFormattedDateForFilename(); // <-- DEJAR
+    if (key.toLowerCase() === 'nombre_plantilla') return template.name; // <-- DEJAR
+    return ''; // <-- DEJAR
+});
 
         filename = filename.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ');
         
