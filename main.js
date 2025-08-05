@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         increaseFontSizeBtn: document.getElementById('increase-font-size'),
         decreaseFontSizeBtn: document.getElementById('decrease-font-size'),
         tableFontColorPicker: document.getElementById('table-font-color-picker'),
+        selectedRowIdentifierDisplay: document.getElementById('selected-row-identifier-display'),
         promptModal: null,
         confirmModal: null,
     };
@@ -181,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!parsed.rowsPerPage) appData.rowsPerPage = 10;
                     if (!parsed.colorCodingColumn) appData.colorCodingColumn = 'ESTADO';
                     if (!parsed.bulkDeleteColumn) appData.bulkDeleteColumn = 'ESTADO'; 
+                    if (!parsed.selectedRowIdentifierColumn) appData.selectedRowIdentifierColumn = 'EXPEDIENTE';
                     
                     if (!parsed.keyColumns) {
                         appData.keyColumns = {};
@@ -238,7 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tableTextColor: 'inherit',
             rowsPerPage: 10,
             colorCodingColumn: 'ESTADO',
-            bulkDeleteColumn: 'ESTADO', 
+            bulkDeleteColumn: 'ESTADO',
+            selectedRowIdentifierColumn: 'EXPEDIENTE',
         };
         if (appData.mainData.length === 0) addRow(false);
     }
@@ -415,8 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } 
         
         saveData();
-        if(needsRerender || column === appData.colorCodingColumn) {
+        if(needsRerender || column === appData.colorCodingColumn || column === appData.selectedRowIdentifierColumn) {
             sortAndApplyFilters();
+            updateSelectedRowIdentifierDisplay();
         }
         updateSummaryBar();
     }
@@ -531,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const selectButton = document.createElement('button');
                 selectButton.className = `selection-button flex items-center justify-center w-8 h-8 rounded-md transition-colors ${isSelected ? 'bg-sky-600 text-white' : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500'}`;
-                selectButton.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                selectButton.innerHTML = isSelected ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>` : '';
                 selectButton.onclick = () => handleRowSelection(row.id);
                 selectionTd.appendChild(selectButton);
                 tr.appendChild(selectionTd);
@@ -846,12 +850,34 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.generatePdfBtn.disabled = !(selectedRowId && selectedTemplateId);
         elements.editSelectedTemplateBtn.disabled = !selectedTemplateId;
         elements.deleteSelectedTemplateBtn.disabled = !selectedTemplateId;
+        updateSelectedRowIdentifierDisplay();
     }
 
     function handleRowSelection(rowId) {
         selectedRowId = selectedRowId === rowId ? null : rowId;
         renderTable();
         updateSelectionStatus();
+    }
+
+    function updateSelectedRowIdentifierDisplay() {
+        const display = elements.selectedRowIdentifierDisplay;
+        if (!display) return;
+        
+        const idColumn = appData.selectedRowIdentifierColumn;
+
+        if (selectedRowId && idColumn && appData.headers.includes(idColumn)) {
+            const rowData = appData.mainData.find(r => r.id === selectedRowId);
+            if (rowData) {
+                const identifierValue = rowData[idColumn] || 'N/A';
+                display.innerHTML = `<span class="font-medium">Seleccionado:</span> <span class="font-extrabold">${identifierValue}</span>`;
+                display.title = `${idColumn}: ${identifierValue}`;
+                display.style.display = 'block';
+            } else {
+                display.style.display = 'none';
+            }
+        } else {
+            display.style.display = 'none';
+        }
     }
     
     function applyTheme(theme) {
@@ -1517,6 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (appData.colorCodingColumn === oldHeader) appData.colorCodingColumn = newHeader;
         if (appData.bulkDeleteColumn === oldHeader) appData.bulkDeleteColumn = newHeader;
         if (appData.hideSettings.column === oldHeader) appData.hideSettings.column = newHeader;
+        if (appData.selectedRowIdentifierColumn === oldHeader) appData.selectedRowIdentifierColumn = newHeader;
 
         const oldListKey = `_list_${oldHeader}`;
         if(appData.referenceDB.hasOwnProperty(oldListKey)) { appData.referenceDB[`_list_${newHeader}`] = appData.referenceDB[oldListKey]; delete appData.referenceDB[oldListKey]; }
@@ -1567,6 +1594,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const rightCol = document.createElement('div'); rightCol.className = "space-y-6";
         const listColumns = appData.headers.filter(h => appData.columnFormats[h] === 'list');
         
+        // --- SECCIÓN: Identificador de Fila ---
+        const identifierSection = createSection('Identificador de Fila Seleccionada');
+        const identifierLabel = document.createElement('label');
+        identifierLabel.className = 'flex items-center gap-3 text-sm';
+        identifierLabel.innerHTML = `<span class="font-semibold text-gray-700 dark:text-gray-300">Usar valor de columna:</span>`;
+        const identifierSelect = document.createElement('select');
+        identifierSelect.className = 'p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 w-full';
+        identifierSelect.innerHTML = appData.headers.map(h => `<option value="${h}" ${appData.selectedRowIdentifierColumn === h ? 'selected' : ''}>${h}</option>`).join('');
+        identifierSelect.onchange = (e) => {
+            appData.selectedRowIdentifierColumn = e.target.value;
+            saveData();
+            updateSelectedRowIdentifierDisplay(); // Update display immediately
+            showToast('Columna de identificación actualizada.', 'success');
+        };
+        identifierLabel.appendChild(identifierSelect);
+        identifierSection.appendChild(identifierLabel);
+        leftCol.appendChild(identifierSection);
+
         // --- SECCIÓN: Codificación de Color ---
         const colorCodingSection = createSection('Codificación de Color por Columna (solo listas)');
         const colorCodingLabel = document.createElement('label');
@@ -2365,6 +2410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme');
         applyTheme(savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
         elements.tableFontColorPicker.value = appData.tableTextColor === 'inherit' ? '#000000' : appData.tableTextColor;
+        updateSelectedRowIdentifierDisplay();
         console.log("GTN v10 (Modificado) inicializado.");
         
         setTimeout(() => {
